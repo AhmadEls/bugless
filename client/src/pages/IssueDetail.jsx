@@ -9,6 +9,7 @@ function IssueDetail() {
   const [issue, setIssue] = useState(null);
   const [newNote, setNewNote] = useState("");
   const [rootCause, setRootCause] = useState("");
+  const [resolutionNotes, setResolutionNotes] = useState("");
 
   const fetchIssue = async () => {
     try {
@@ -59,6 +60,20 @@ function IssueDetail() {
       fetchIssue();
     } catch (err) {
       console.error("Failed to save root cause", err);
+    }
+  };
+
+  const saveResolution = async () => {
+    if (!resolutionNotes.trim()) return;
+
+    try {
+      await axios.patch(`http://localhost:5000/api/issues/${id}/resolution`, {
+        resolutionNotes,
+      });
+      setResolutionNotes("");
+      fetchIssue();
+    } catch (err) {
+      console.error("Failed to save resolution", err);
     }
   };
 
@@ -186,9 +201,53 @@ function IssueDetail() {
 
         <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-5">
           <h3 className="text-lg font-semibold text-white">Resolution</h3>
+
           <p className="mt-4 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-300">
             {issue.resolutionNotes || "Not provided yet."}
           </p>
+
+          <div className="mt-4 flex gap-3">
+            <input
+              type="text"
+              value={resolutionNotes}
+              onChange={(e) => setResolutionNotes(e.target.value)}
+              placeholder="Write resolution..."
+              className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-blue-500"
+            />
+            <button
+              onClick={saveResolution}
+              className="rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-slate-200"
+            >
+              Save
+            </button>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-5">
+          <h3 className="text-lg font-semibold text-white">Activity Timeline</h3>
+
+          <div className="mt-4 space-y-3">
+            {issue.activityLog && issue.activityLog.length > 0 ? (
+              [...issue.activityLog]
+                .slice()
+                .reverse()
+                .map((item, index) => (
+                  <div
+                    key={index}
+                    className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3"
+                  >
+                    <p className="text-sm font-medium text-slate-200">
+                      {item.message}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {new Date(item.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+            ) : (
+              <p className="text-sm text-slate-500">No activity yet.</p>
+            )}
+          </div>
         </section>
       </div>
     </div>

@@ -10,6 +10,12 @@ const createIssue = async (req, res) => {
       severity,
       category,
       createdBy,
+      activityLog: [
+        {
+          type: "CREATED",
+          message: `Issue created by ${createdBy || "anonymous"}`,
+        },
+      ],
     });
 
     res.status(201).json(issue);
@@ -32,6 +38,7 @@ const getAllIssues = async (req, res) => {
     });
   }
 };
+
 const getIssueById = async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
@@ -61,11 +68,18 @@ const updateIssueStatus = async (req, res) => {
 
     const allowedStatuses = ["OPEN", "INVESTIGATING", "IN_PROGRESS", "RESOLVED"];
 
-if (!allowedStatuses.includes(status)) {
-  return res.status(400).json({ message: "Invalid status value" });
-}
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
 
-issue.status = status;
+    const oldStatus = issue.status;
+    issue.status = status;
+
+    issue.activityLog.push({
+      type: "STATUS_CHANGED",
+      message: `Status changed from ${oldStatus} to ${status}`,
+    });
+
     await issue.save();
 
     res.json(issue);
@@ -88,6 +102,11 @@ const addNote = async (req, res) => {
     }
 
     issue.simulatedLogs.push(note);
+    issue.activityLog.push({
+      type: "NOTE_ADDED",
+      message: `Note added: ${note}`,
+    });
+
     await issue.save();
 
     res.json(issue);
@@ -110,6 +129,11 @@ const addRootCause = async (req, res) => {
     }
 
     issue.rootCause = rootCause;
+    issue.activityLog.push({
+      type: "ROOT_CAUSE_ADDED",
+      message: `Root cause added`,
+    });
+
     await issue.save();
 
     res.json(issue);
@@ -132,6 +156,11 @@ const addResolution = async (req, res) => {
     }
 
     issue.resolutionNotes = resolutionNotes;
+    issue.activityLog.push({
+      type: "RESOLUTION_ADDED",
+      message: `Resolution added`,
+    });
+
     await issue.save();
 
     res.json(issue);
@@ -142,7 +171,6 @@ const addResolution = async (req, res) => {
     });
   }
 };
-
 
 module.exports = {
   createIssue,

@@ -1,5 +1,24 @@
 const mongoose = require("mongoose");
 
+const activityItemSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["CREATED", "STATUS_CHANGED", "NOTE_ADDED", "ROOT_CAUSE_ADDED", "RESOLUTION_ADDED"],
+      required: true,
+    },
+    message: {
+      type: String,
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const issueSchema = new mongoose.Schema(
   {
     title: {
@@ -43,6 +62,7 @@ const issueSchema = new mongoose.Schema(
       type: String,
       default: "anonymous",
     },
+    activityLog: [activityItemSchema],
   },
   {
     timestamps: true,

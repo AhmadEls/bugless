@@ -1,24 +1,56 @@
-import { useEffect, useState } from "react";
-import { getIssues } from "./api/issues";
+import { useEffect, useMemo, useState } from "react";
+import { getIssues, updateStatus } from "./api/issues";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import IssueDetail from "./pages/IssueDetail";
+import CreateIssueForm from "./components/CreateIssueForm";
 
 function App() {
   const [issues, setIssues] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [severityFilter, setSeverityFilter] = useState("ALL");
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchIssues = async () => {
-      try {
-        const data = await getIssues();
-        setIssues(data);
-      } catch (error) {
-        console.error("Failed to fetch issues:", error);
-      }
-    };
+  const fetchIssues = async () => {
+    try {
+      const data = await getIssues();
+      setIssues(data);
+    } catch (error) {
+      console.error("Failed to fetch issues:", error);
+    }
+  };
 
+  useEffect(() => {
     fetchIssues();
   }, []);
+
+  const handleStatusChange = async (issueId, status) => {
+    try {
+      await updateStatus(issueId, status);
+      fetchIssues();
+    } catch (error) {
+      console.error("Failed to update status:", error);
+    }
+  };
+
+  const filteredIssues = useMemo(() => {
+    return issues.filter((issue) => {
+      const matchesStatus =
+        statusFilter === "ALL" || issue.status === statusFilter;
+      const matchesSeverity =
+        severityFilter === "ALL" || issue.severity === severityFilter;
+
+      return matchesStatus && matchesSeverity;
+    });
+  }, [issues, statusFilter, severityFilter]);
+
+  const totalIssues = issues.length;
+  const openIssues = issues.filter((issue) => issue.status === "OPEN").length;
+  const inProgressIssues = issues.filter(
+    (issue) => issue.status === "IN_PROGRESS"
+  ).length;
+  const resolvedIssues = issues.filter(
+    (issue) => issue.status === "RESOLVED"
+  ).length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -76,52 +108,132 @@ function App() {
             </p>
           </header>
 
-          <main className="px-8 py-8">
+          <main className="space-y-6 px-8 py-8">
             <Routes>
               <Route
                 path="/"
                 element={
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/20">
-                    <h2 className="mb-5 text-lg font-semibold text-white">
-                      Issues
-                    </h2>
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
+                        <p className="text-sm text-slate-400">Total Issues</p>
+                        <h3 className="mt-2 text-3xl font-bold text-white">
+                          {totalIssues}
+                        </h3>
+                      </div>
 
-                    {issues.length === 0 ? (
-                      <p className="text-sm text-slate-400">No issues found</p>
-                    ) : (
-                      <ul className="space-y-4">
-                        {issues.map((issue) => (
-                          <li
-                            key={issue._id}
-                            onClick={() => navigate(`/issues/${issue._id}`)}
-                            className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-950 p-5 transition hover:border-slate-700 hover:bg-slate-900 hover:shadow-lg hover:shadow-black/20"
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
+                        <p className="text-sm text-slate-400">Open</p>
+                        <h3 className="mt-2 text-3xl font-bold text-blue-400">
+                          {openIssues}
+                        </h3>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
+                        <p className="text-sm text-slate-400">In Progress</p>
+                        <h3 className="mt-2 text-3xl font-bold text-yellow-400">
+                          {inProgressIssues}
+                        </h3>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
+                        <p className="text-sm text-slate-400">Resolved</p>
+                        <h3 className="mt-2 text-3xl font-bold text-green-400">
+                          {resolvedIssues}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <CreateIssueForm onIssueCreated={fetchIssues} />
+
+                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/20">
+                      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <h2 className="text-lg font-semibold text-white">
+                          Issues
+                        </h2>
+
+                        <div className="flex flex-col gap-3 md:flex-row">
+                          <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-white outline-none focus:border-blue-500"
                           >
-                            <h3 className="text-lg font-semibold text-white">
-                              {issue.title}
-                            </h3>
+                            <option value="ALL">All Statuses</option>
+                            <option value="OPEN">OPEN</option>
+                            <option value="IN_PROGRESS">IN_PROGRESS</option>
+                            <option value="RESOLVED">RESOLVED</option>
+                          </select>
 
-                            <p className="mt-2 text-sm text-slate-400">
-                              {issue.description}
-                            </p>
+                          <select
+                            value={severityFilter}
+                            onChange={(e) => setSeverityFilter(e.target.value)}
+                            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-white outline-none focus:border-blue-500"
+                          >
+                            <option value="ALL">All Severities</option>
+                            <option value="LOW">LOW</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="HIGH">HIGH</option>
+                          </select>
+                        </div>
+                      </div>
 
-                            <div className="mt-4 flex items-center gap-3 text-xs font-medium">
-                              <span className="rounded-full bg-blue-500/15 px-3 py-1.5 text-blue-300">
-                                {issue.status}
-                              </span>
+                      {filteredIssues.length === 0 ? (
+                        <p className="text-sm text-slate-400">
+                          No issues match the selected filters
+                        </p>
+                      ) : (
+                        <ul className="space-y-4">
+                          {filteredIssues.map((issue) => (
+                            <li
+                              key={issue._id}
+                              onClick={() => navigate(`/issues/${issue._id}`)}
+                              className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-950 p-5 transition hover:border-slate-700 hover:bg-slate-900 hover:shadow-lg hover:shadow-black/20"
+                            >
+                              <h3 className="text-lg font-semibold text-white">
+                                {issue.title}
+                              </h3>
 
-                              <span className="rounded-full bg-red-500/15 px-3 py-1.5 text-red-300">
-                                {issue.severity}
-                              </span>
+                              <p className="mt-2 text-sm text-slate-400">
+                                {issue.description}
+                              </p>
 
-                              <span className="rounded-full bg-slate-700 px-3 py-1.5 text-slate-300">
-                                {issue.category}
-                              </span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium">
+                                {["OPEN", "IN_PROGRESS", "RESOLVED"].map(
+                                  (statusOption) => (
+                                    <button
+                                      key={statusOption}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusChange(
+                                          issue._id,
+                                          statusOption
+                                        );
+                                      }}
+                                      className={`rounded-full px-3 py-1.5 transition ${
+                                        issue.status === statusOption
+                                          ? "bg-blue-500 text-white"
+                                          : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                                      }`}
+                                    >
+                                      {statusOption}
+                                    </button>
+                                  )
+                                )}
+
+                                <span className="rounded-full bg-red-500/15 px-3 py-1.5 text-red-300">
+                                  {issue.severity}
+                                </span>
+
+                                <span className="rounded-full bg-slate-700 px-3 py-1.5 text-slate-300">
+                                  {issue.category}
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </>
                 }
               />
 
