@@ -8,6 +8,7 @@ function App() {
   const [issues, setIssues] = useState([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [severityFilter, setSeverityFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
   const fetchIssues = async () => {
@@ -34,14 +35,24 @@ function App() {
 
   const filteredIssues = useMemo(() => {
     return issues.filter((issue) => {
+      const searchValue = search.toLowerCase();
+
       const matchesStatus =
         statusFilter === "ALL" || issue.status === statusFilter;
+
       const matchesSeverity =
         severityFilter === "ALL" || issue.severity === severityFilter;
 
-      return matchesStatus && matchesSeverity;
+      const matchesSearch =
+        issue.title.toLowerCase().includes(searchValue) ||
+        issue.description.toLowerCase().includes(searchValue) ||
+        issue.category.toLowerCase().includes(searchValue) ||
+        issue.severity.toLowerCase().includes(searchValue) ||
+        issue.status.toLowerCase().includes(searchValue);
+
+      return matchesStatus && matchesSeverity && matchesSearch;
     });
-  }, [issues, statusFilter, severityFilter]);
+  }, [issues, statusFilter, severityFilter, search]);
 
   const totalIssues = issues.length;
   const openIssues = issues.filter((issue) => issue.status === "OPEN").length;
@@ -147,12 +158,26 @@ function App() {
                     <CreateIssueForm onIssueCreated={fetchIssues} />
 
                     <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-black/20">
-                      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <h2 className="text-lg font-semibold text-white">
-                          Issues
-                        </h2>
+                      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                          <h2 className="text-lg font-semibold text-white">
+                            Issues
+                          </h2>
+                          <p className="mt-1 text-sm text-slate-400">
+                            Showing {filteredIssues.length} of {issues.length}{" "}
+                            issues
+                          </p>
+                        </div>
 
-                        <div className="flex flex-col gap-3 md:flex-row">
+                        <div className="flex flex-col gap-3 lg:flex-row">
+                          <input
+                            type="text"
+                            placeholder="Search issues..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-white placeholder:text-slate-500 outline-none focus:border-blue-500 lg:w-72"
+                          />
+
                           <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
@@ -178,9 +203,14 @@ function App() {
                       </div>
 
                       {filteredIssues.length === 0 ? (
-                        <p className="text-sm text-slate-400">
-                          No issues match the selected filters
-                        </p>
+                        <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-8 text-center">
+                          <p className="text-sm font-medium text-slate-300">
+                           No issues found — try adjusting filters or create a new issue.
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Try changing the search text, status, or severity.
+                          </p>
+                        </div>
                       ) : (
                         <ul className="space-y-4">
                           {filteredIssues.map((issue) => (
